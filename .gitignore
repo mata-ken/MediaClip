@@ -1,0 +1,16 @@
+# Swift / SPM
+.build/
+.swiftpm/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# Build output
+build/
+
+# macOS
+.DS_Store
+*.dSYM
+
+# CLAUDE.md (auto-generated)
+**/CLAUDE.md

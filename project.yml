@@ -1,0 +1,26 @@
+name: MediaClip
+options:
+  bundleIdPrefix: com.mediaclip
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  minimumXcodeGenVersion: "2.38"
+
+targets:
+  MediaClip:
+    type: application
+    platform: macOS
+    sources:
+      - MediaClip
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mediaclip.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        INFOPLIST_FILE: MediaClip/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: MediaClip/Resources/MediaClip.entitlements
+        ENABLE_HARDENED_RUNTIME: false
+        CODE_SIGN_IDENTITY: "-"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
