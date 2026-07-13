@@ -25,7 +25,7 @@ struct SettingsView: View {
             BetaSettingsTab()
                 .tabItem { Label("ベータ", systemImage: "flask") }
         }
-        .frame(width: 500, height: 380)
+        .frame(width: 540, height: 440)
     }
 }
 
@@ -58,7 +58,7 @@ struct GeneralSettingsTab: View {
                     .frame(width: 100)
                 }
 
-                Toggle("最後にコピーした順に並べ替え", isOn: $settings.sortByLastUsed)
+                Toggle("ペーストしたアイテムを先頭に並べ替え", isOn: $settings.sortByLastUsed)
             }
 
             Section("ステータスバーアイコン") {
@@ -75,7 +75,7 @@ struct GeneralSettingsTab: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text("アクセシビリティ")
-                        Text("他のアプリへのペーストに必要")
+                        Text("他のアプリへのペースト・選択テキスト取得に必要")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -150,6 +150,12 @@ struct MenuSettingsTab: View {
 
             Section("動作") {
                 Toggle("同じ内容の重複を排除", isOn: $settings.handleDuplicates)
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("数字キー (1-9, 0) で選択", isOn: $settings.numericKeySelection)
+                    Text("メニュー表示中に数字キーを押すと、テキスト履歴の先頭10件を直接選択できます")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("メニュー外観") {
@@ -196,9 +202,18 @@ struct FormatSettingsTab: View {
                 Toggle("プレーンテキスト", isOn: $settings.supportPlainText)
                 Toggle("リッチテキスト (RTF)", isOn: $settings.supportRichText)
                 Toggle("PDF", isOn: $settings.supportPDF)
-                Toggle("ファイル名", isOn: $settings.supportFilenames)
+                Toggle("ファイル", isOn: $settings.supportFilenames)
                 Toggle("URL", isOn: $settings.supportURL)
-                Toggle("画像", isOn: $settings.supportImages)
+                Toggle("画像・動画", isOn: $settings.supportImages)
+            }
+
+            Section("セキュリティ") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("機密データを無視", isOn: $settings.ignoreConcealedTypes)
+                    Text("パスワードマネージャ (1Password 等) がコピーする機密データを履歴に保存しません")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section {
@@ -299,29 +314,70 @@ struct ShortcutSettingsTab: View {
         Form {
             Section("グローバルショートカット") {
                 HStack {
-                    Text("メインメニュー")
+                    Text("メインメニュー（履歴＋スニペット）")
                     Spacer()
-                    Text(settings.mainShortcutDisplayString)
-                        .font(.system(size: 12, design: .monospaced))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color(nsColor: .controlBackgroundColor))
-                        .cornerRadius(6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                        )
+                    ShortcutRecorderField(
+                        keyCode: $settings.mainShortcutKeyCode,
+                        modifiers: $settings.mainShortcutModifiers,
+                        onChange: { AppDelegate.reloadHotKeys() }
+                    )
+                    .frame(width: 130, height: 24)
                 }
+
+                shortcutToggleRow(
+                    "履歴のみ表示",
+                    enabled: $settings.historyShortcutEnabled,
+                    keyCode: $settings.historyShortcutKeyCode,
+                    modifiers: $settings.historyShortcutModifiers
+                )
+
+                shortcutToggleRow(
+                    "スニペットのみ表示",
+                    enabled: $settings.snippetsShortcutEnabled,
+                    keyCode: $settings.snippetsShortcutKeyCode,
+                    modifiers: $settings.snippetsShortcutModifiers
+                )
+
+                shortcutToggleRow(
+                    "クイックスニペット登録（選択テキスト）",
+                    enabled: $settings.quickSnippetShortcutEnabled,
+                    keyCode: $settings.quickSnippetShortcutKeyCode,
+                    modifiers: $settings.quickSnippetShortcutModifiers
+                )
             }
 
             Section {
-                Text("ショートカットの変更は現在のバージョンでは設定ファイルの編集が必要です。\nデフォルト: Cmd + Shift + V")
+                Text("フィールドをクリックしてキーを押すと変更できます（Escでキャンセル・修飾キー必須）。\nスニペットフォルダごとのホットキーは「スニペット編集」画面で設定できます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .padding(.horizontal)
+        .onChange(of: settings.historyShortcutEnabled) { _, _ in AppDelegate.reloadHotKeys() }
+        .onChange(of: settings.snippetsShortcutEnabled) { _, _ in AppDelegate.reloadHotKeys() }
+        .onChange(of: settings.quickSnippetShortcutEnabled) { _, _ in AppDelegate.reloadHotKeys() }
+    }
+
+    @ViewBuilder
+    private func shortcutToggleRow(
+        _ label: String,
+        enabled: Binding<Bool>,
+        keyCode: Binding<UInt32>,
+        modifiers: Binding<UInt32>
+    ) -> some View {
+        HStack {
+            Toggle(label, isOn: enabled)
+            Spacer()
+            if enabled.wrappedValue {
+                ShortcutRecorderField(
+                    keyCode: keyCode,
+                    modifiers: modifiers,
+                    onChange: { AppDelegate.reloadHotKeys() }
+                )
+                .frame(width: 130, height: 24)
+            }
+        }
     }
 }
 
@@ -329,6 +385,8 @@ struct ShortcutSettingsTab: View {
 
 struct UpdateSettingsTab: View {
     @ObservedObject private var settings = UserSettings.shared
+    @State private var checking = false
+    @State private var statusMessage: String?
 
     var body: some View {
         Form {
@@ -353,12 +411,44 @@ struct UpdateSettingsTab: View {
                 HStack {
                     Text("現在のバージョン")
                     Spacer()
-                    Text("1.0.0")
+                    Text(UpdateChecker.currentVersion)
                         .foregroundStyle(.secondary)
                 }
 
-                Button("アップデートを確認") {
-                    // Placeholder - no update server yet
+                if settings.lastUpdateCheckAt > 0 {
+                    HStack {
+                        Text("最終確認")
+                        Spacer()
+                        Text(Date(timeIntervalSince1970: settings.lastUpdateCheckAt)
+                            .formatted(date: .abbreviated, time: .shortened))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Button(checking ? "確認中..." : "アップデートを確認") {
+                        checking = true
+                        statusMessage = nil
+                        UpdateChecker.check { result in
+                            checking = false
+                            switch result {
+                            case .upToDate(let current):
+                                statusMessage = "最新版です (v\(current))"
+                            case .updateAvailable(let current, let latest, let url):
+                                statusMessage = "新しいバージョン v\(latest) があります"
+                                UpdateChecker.presentUpdateAlert(current: current, latest: latest, url: url)
+                            case .failed(let message):
+                                statusMessage = "確認失敗: \(message)"
+                            }
+                        }
+                    }
+                    .disabled(checking)
+
+                    if let statusMessage {
+                        Text(statusMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
@@ -374,6 +464,16 @@ struct BetaSettingsTab: View {
 
     var body: some View {
         Form {
+            Section("修飾キー + クリックのアクション（履歴アイテム）") {
+                modifierPicker("プレーンテキストでペースト", selection: $settings.plainTextModifierRaw)
+                modifierPicker("履歴から削除", selection: $settings.deleteModifierRaw)
+                modifierPicker("ピン留め / 解除", selection: $settings.pinModifierRaw)
+                modifierPicker("スニペットに登録", selection: $settings.snippetModifierRaw)
+                Text("修飾キーを押しながら履歴アイテムを選択すると、ペーストの代わりに上記アクションを実行します")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("実験的機能") {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle("常にプレーンテキストとしてペースト", isOn: $settings.pasteAsPlainText)
@@ -390,20 +490,42 @@ struct BetaSettingsTab: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("スクリーンショットを自動保存", isOn: $settings.saveScreenshots)
-                    Text("スクリーンショットをクリップボード履歴に保存します")
+                    Toggle("クリップボードの画像を自動保存", isOn: $settings.saveScreenshots)
+                    Text("コピーされた画像（スクリーンショット等）をクリップボード履歴に保存します")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("スクリーンショットのファイル保存を監視", isOn: $settings.watchScreenshotFiles)
+                    Text("ファイルとして保存されたスクリーンショットも履歴に取り込みます")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("画像の文字認識 (OCR)", isOn: $settings.enableOCR)
+                    Text("画像内のテキストを認識して検索できるようにします（オンデバイス処理）")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-
-            Section {
-                Text("これらの機能は実験的なものです。予期しない動作をする可能性があります。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
         .formStyle(.grouped)
         .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private func modifierPicker(_ label: String, selection: Binding<String>) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Picker("", selection: selection) {
+                ForEach(ModifierChoice.allCases) { choice in
+                    Text(choice.displayName).tag(choice.rawValue)
+                }
+            }
+            .frame(width: 140)
+        }
     }
 }

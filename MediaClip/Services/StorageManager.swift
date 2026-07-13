@@ -12,6 +12,8 @@ final class StorageManager: ObservableObject {
     let mediaDirectory: URL
     let imagesDirectory: URL
     let thumbnailsDirectory: URL
+    let rtfDirectory: URL
+    let pdfsDirectory: URL
 
     @Published var clipboardItems: [ClipboardItem] = []
     @Published var snippets: [Snippet] = []
@@ -29,6 +31,8 @@ final class StorageManager: ObservableObject {
         mediaDirectory = baseDirectory.appendingPathComponent("media", isDirectory: true)
         imagesDirectory = baseDirectory.appendingPathComponent("images", isDirectory: true)
         thumbnailsDirectory = baseDirectory.appendingPathComponent("thumbnails", isDirectory: true)
+        rtfDirectory = baseDirectory.appendingPathComponent("rtf", isDirectory: true)
+        pdfsDirectory = baseDirectory.appendingPathComponent("pdfs", isDirectory: true)
 
         historyFile = baseDirectory.appendingPathComponent("history.json")
         snippetsFile = baseDirectory.appendingPathComponent("snippets.json")
@@ -39,6 +43,8 @@ final class StorageManager: ObservableObject {
         try? fm.createDirectory(at: mediaDirectory, withIntermediateDirectories: true)
         try? fm.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
         try? fm.createDirectory(at: thumbnailsDirectory, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: rtfDirectory, withIntermediateDirectories: true)
+        try? fm.createDirectory(at: pdfsDirectory, withIntermediateDirectories: true)
 
         encoder.dateEncodingStrategy = .iso8601
         decoder.dateDecodingStrategy = .iso8601
@@ -52,18 +58,11 @@ final class StorageManager: ObservableObject {
         clipboardItems.insert(item, at: 0)
         enforceHistoryLimit()
         saveHistory()
+        runOCRIfNeeded(for: item)
     }
 
     func deleteClipboardItem(_ item: ClipboardItem) {
-        if let imageFile = item.imageFileName {
-            try? FileManager.default.removeItem(at: imagesDirectory.appendingPathComponent(imageFile))
-        }
-        if let thumbFile = item.thumbnailFileName {
-            try? FileManager.default.removeItem(at: thumbnailsDirectory.appendingPathComponent(thumbFile))
-        }
-        if let path = item.mediaFilePath {
-            try? FileManager.default.removeItem(at: URL(fileURLWithPath: path))
-        }
+        removePayloadFiles(of: item)
         clipboardItems.removeAll { $0.id == item.id }
         saveHistory()
     }
@@ -71,15 +70,7 @@ final class StorageManager: ObservableObject {
     func clearUnpinnedItems() {
         let unpinned = clipboardItems.filter { !$0.isPinned }
         for item in unpinned {
-            if let imageFile = item.imageFileName {
-                try? FileManager.default.removeItem(at: imagesDirectory.appendingPathComponent(imageFile))
-            }
-            if let thumbFile = item.thumbnailFileName {
-                try? FileManager.default.removeItem(at: thumbnailsDirectory.appendingPathComponent(thumbFile))
-            }
-            if let path = item.mediaFilePath {
-                try? FileManager.default.removeItem(at: URL(fileURLWithPath: path))
-            }
+            removePayloadFiles(of: item)
         }
         clipboardItems.removeAll { !$0.isPinned }
         saveHistory()
@@ -88,6 +79,21 @@ final class StorageManager: ObservableObject {
     func togglePin(_ item: ClipboardItem) {
         item.isPinned.toggle()
         saveHistory()
+        objectWillChange.send()
+    }
+
+    /// Move an existing item to the top of the history (e.g. re-copied duplicate / paste reorder)
+    func moveToTop(_ item: ClipboardItem) {
+        guard let index = clipboardItems.firstIndex(where: { $0.id == item.id }) else { return }
+        guard index != 0 else { return }
+        clipboardItems.remove(at: index)
+        clipboardItems.insert(item, at: 0)
+        saveHistory()
+    }
+
+    /// Find an existing history item by content hash (duplicate detection)
+    func itemWithHash(_ hash: String) -> ClipboardItem? {
+        clipboardItems.first { $0.contentHash == hash }
     }
 
     func saveImageData(_ data: Data) -> String {
@@ -104,12 +110,34 @@ final class StorageManager: ObservableObject {
         return fileName
     }
 
+    func saveRTFData(_ data: Data) -> String {
+        let fileName = "\(UUID().uuidString).rtf"
+        let url = rtfDirectory.appendingPathComponent(fileName)
+        try? data.write(to: url)
+        return fileName
+    }
+
+    func savePDFData(_ data: Data) -> String {
+        let fileName = "\(UUID().uuidString).pdf"
+        let url = pdfsDirectory.appendingPathComponent(fileName)
+        try? data.write(to: url)
+        return fileName
+    }
+
     func loadImageData(fileName: String) -> Data? {
         try? Data(contentsOf: imagesDirectory.appendingPathComponent(fileName))
     }
 
     func loadThumbnailData(fileName: String) -> Data? {
         try? Data(contentsOf: thumbnailsDirectory.appendingPathComponent(fileName))
+    }
+
+    func loadRTFData(fileName: String) -> Data? {
+        try? Data(contentsOf: rtfDirectory.appendingPathComponent(fileName))
+    }
+
+    func loadPDFData(fileName: String) -> Data? {
+        try? Data(contentsOf: pdfsDirectory.appendingPathComponent(fileName))
     }
 
     func saveVideoFile(from sourceURL: URL) -> String? {
@@ -150,6 +178,25 @@ final class StorageManager: ObservableObject {
         snippets.filter { $0.folderID == folderID }.sorted { $0.sortOrder < $1.sortOrder }
     }
 
+    /// Reorder snippets within a folder (drag & drop)
+    func moveSnippets(in folderID: UUID?, from source: IndexSet, to destination: Int) {
+        var subset = snippetsForFolder(folderID)
+        subset.move(fromOffsets: source, toOffset: destination)
+        for (index, snippet) in subset.enumerated() {
+            snippet.sortOrder = index
+        }
+        saveSnippets()
+        objectWillChange.send()
+    }
+
+    /// Move a snippet into another folder (or nil = unfoldered)
+    func moveSnippet(_ snippet: Snippet, toFolder folderID: UUID?) {
+        snippet.folderID = folderID
+        snippet.sortOrder = snippetsForFolder(folderID).count
+        saveSnippets()
+        objectWillChange.send()
+    }
+
     // MARK: - Folders
 
     func addFolder(_ folder: SnippetFolder) {
@@ -159,6 +206,7 @@ final class StorageManager: ObservableObject {
 
     func updateFolder(_ folder: SnippetFolder) {
         saveFolders()
+        objectWillChange.send()
     }
 
     func deleteFolder(_ folder: SnippetFolder) {
@@ -169,11 +217,41 @@ final class StorageManager: ObservableObject {
         saveSnippets()
     }
 
+    /// Reorder folders (drag & drop)
+    func moveFolders(from source: IndexSet, to destination: Int) {
+        folders.move(fromOffsets: source, toOffset: destination)
+        for (index, folder) in folders.enumerated() {
+            folder.sortOrder = index
+        }
+        saveFolders()
+    }
+
+    // MARK: - Snippet Import (Clipy XML)
+
+    @discardableResult
+    func importFolders(_ imported: [SnippetXMLService.ImportedFolder]) -> (folders: Int, snippets: Int) {
+        var folderCount = 0
+        var snippetCount = 0
+        for importedFolder in imported {
+            let folder = SnippetFolder(name: importedFolder.title, sortOrder: folders.count)
+            folders.append(folder)
+            folderCount += 1
+            for (index, entry) in importedFolder.snippets.enumerated() {
+                let snippet = Snippet(title: entry.title, content: entry.content, folderID: folder.id, sortOrder: index)
+                snippets.append(snippet)
+                snippetCount += 1
+            }
+        }
+        saveFolders()
+        saveSnippets()
+        return (folderCount, snippetCount)
+    }
+
     // MARK: - Storage Info
 
     var storageUsage: String {
         var totalSize: Int64 = 0
-        let dirs = [mediaDirectory, imagesDirectory, thumbnailsDirectory]
+        let dirs = [mediaDirectory, imagesDirectory, thumbnailsDirectory, rtfDirectory, pdfsDirectory]
         for dir in dirs {
             if let enumerator = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: [.fileSizeKey]) {
                 while let url = enumerator.nextObject() as? URL {
@@ -189,6 +267,37 @@ final class StorageManager: ObservableObject {
     }
 
     // MARK: - Private
+
+    private func removePayloadFiles(of item: ClipboardItem) {
+        if let imageFile = item.imageFileName {
+            try? FileManager.default.removeItem(at: imagesDirectory.appendingPathComponent(imageFile))
+        }
+        if let thumbFile = item.thumbnailFileName {
+            try? FileManager.default.removeItem(at: thumbnailsDirectory.appendingPathComponent(thumbFile))
+        }
+        if let rtfFile = item.rtfFileName {
+            try? FileManager.default.removeItem(at: rtfDirectory.appendingPathComponent(rtfFile))
+        }
+        if let pdfFile = item.pdfFileName {
+            try? FileManager.default.removeItem(at: pdfsDirectory.appendingPathComponent(pdfFile))
+        }
+        if let path = item.mediaFilePath {
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: path))
+        }
+    }
+
+    private func runOCRIfNeeded(for item: ClipboardItem) {
+        guard UserSettings.shared.enableOCR,
+              item.contentType == .image,
+              item.ocrText == nil,
+              let fileName = item.imageFileName,
+              let data = loadImageData(fileName: fileName) else { return }
+        OCRService.recognizeText(in: data) { [weak self] text in
+            guard let self, let text else { return }
+            item.ocrText = text
+            self.saveHistory()
+        }
+    }
 
     private func enforceHistoryLimit() {
         let unpinned = clipboardItems.filter { !$0.isPinned }
@@ -216,6 +325,7 @@ final class StorageManager: ObservableObject {
         clipboardItems = load(from: historyFile) ?? []
         snippets = load(from: snippetsFile) ?? []
         folders = load(from: foldersFile) ?? []
+        folders.sort { $0.sortOrder < $1.sortOrder }
     }
 
     private func saveHistory() {

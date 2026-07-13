@@ -5,6 +5,9 @@ enum ContentType: String, Codable, CaseIterable {
     case richText
     case image
     case video
+    case url
+    case pdf
+    case file
 
     var displayName: String {
         switch self {
@@ -12,6 +15,9 @@ enum ContentType: String, Codable, CaseIterable {
         case .richText: return "Rich Text"
         case .image: return "Image"
         case .video: return "Video"
+        case .url: return "URL"
+        case .pdf: return "PDF"
+        case .file: return "File"
         }
     }
 
@@ -21,6 +27,9 @@ enum ContentType: String, Codable, CaseIterable {
         case .richText: return "doc.richtext"
         case .image: return "photo"
         case .video: return "film"
+        case .url: return "link"
+        case .pdf: return "doc.richtext.fill"
+        case .file: return "doc"
         }
     }
 }
