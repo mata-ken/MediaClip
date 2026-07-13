@@ -133,6 +133,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
+        // Capture focused field into history (rescue dictation / direct-typed text)
+        if settings.captureFieldShortcutEnabled {
+            manager.register(
+                keyCode: settings.captureFieldShortcutKeyCode,
+                modifiers: settings.captureFieldShortcutModifiers
+            ) { [weak self] in
+                self?.captureFieldToHistory()
+            }
+        }
+
         // Per-folder snippet hotkeys
         for folder in StorageManager.shared.folders {
             if let keyCode = folder.hotKeyCode, let modifiers = folder.hotKeyModifiers {
@@ -697,6 +707,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             } else {
                 HUDNotifier.show("選択テキストが見つかりません")
             }
+        }
+    }
+
+    /// Capture the whole focused text field into the clipboard & history.
+    /// Rescues text that was typed/dictated directly (e.g. Aqua Voice) and never hit the clipboard.
+    func captureFieldToHistory() {
+        if !AXIsProcessTrusted() {
+            let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
+            AXIsProcessTrustedWithOptions(options)
+            return
+        }
+
+        SelectedTextService.captureFocusedFieldText(monitor: clipboardMonitor) { [weak self] text in
+            guard let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                HUDNotifier.show("テキストが取得できませんでした")
+                return
+            }
+            // Put it on the clipboard (NOT a self-change) so the monitor records it into history.
+            _ = self
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
+            HUDNotifier.show("✅ テキストを履歴に保存しました")
         }
     }
 

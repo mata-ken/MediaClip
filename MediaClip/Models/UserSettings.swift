@@ -211,6 +211,19 @@ final class UserSettings: ObservableObject {
         didSet { defaults.set(Int(quickSnippetShortcutModifiers), forKey: "quickSnippetShortcutModifiers") }
     }
 
+    /// フォーカス中のテキスト欄の中身を履歴に取り込む（音声入力・直接入力の救済）
+    @Published var captureFieldShortcutEnabled: Bool {
+        didSet { defaults.set(captureFieldShortcutEnabled, forKey: "captureFieldShortcutEnabled") }
+    }
+
+    @Published var captureFieldShortcutKeyCode: UInt32 {
+        didSet { defaults.set(Int(captureFieldShortcutKeyCode), forKey: "captureFieldShortcutKeyCode") }
+    }
+
+    @Published var captureFieldShortcutModifiers: UInt32 {
+        didSet { defaults.set(Int(captureFieldShortcutModifiers), forKey: "captureFieldShortcutModifiers") }
+    }
+
     // MARK: - アップデート (Update)
 
     @Published var autoCheckUpdates: Bool {
@@ -318,6 +331,9 @@ final class UserSettings: ObservableObject {
             "quickSnippetShortcutEnabled": true,
             "quickSnippetShortcutKeyCode": 1, // S
             "quickSnippetShortcutModifiers": 0x0100 | 0x0200, // cmd | shift
+            "captureFieldShortcutEnabled": true,
+            "captureFieldShortcutKeyCode": 8, // C
+            "captureFieldShortcutModifiers": 0x0100 | 0x0200, // cmd | shift
             "plainTextModifier": ModifierChoice.shift.rawValue,
             "deleteModifier": ModifierChoice.control.rawValue,
             "pinModifier": ModifierChoice.option.rawValue,
@@ -366,6 +382,9 @@ final class UserSettings: ObservableObject {
         quickSnippetShortcutEnabled = defaults.bool(forKey: "quickSnippetShortcutEnabled")
         quickSnippetShortcutKeyCode = UInt32(defaults.integer(forKey: "quickSnippetShortcutKeyCode"))
         quickSnippetShortcutModifiers = UInt32(defaults.integer(forKey: "quickSnippetShortcutModifiers"))
+        captureFieldShortcutEnabled = defaults.bool(forKey: "captureFieldShortcutEnabled")
+        captureFieldShortcutKeyCode = UInt32(defaults.integer(forKey: "captureFieldShortcutKeyCode"))
+        captureFieldShortcutModifiers = UInt32(defaults.integer(forKey: "captureFieldShortcutModifiers"))
 
         autoCheckUpdates = defaults.bool(forKey: "autoCheckUpdates")
         updateCheckInterval = defaults.integer(forKey: "updateCheckInterval")

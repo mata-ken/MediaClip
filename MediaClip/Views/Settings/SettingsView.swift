@@ -344,6 +344,13 @@ struct ShortcutSettingsTab: View {
                     keyCode: $settings.quickSnippetShortcutKeyCode,
                     modifiers: $settings.quickSnippetShortcutModifiers
                 )
+
+                shortcutToggleRow(
+                    "入力欄の内容を履歴に取り込む（音声入力の救済）",
+                    enabled: $settings.captureFieldShortcutEnabled,
+                    keyCode: $settings.captureFieldShortcutKeyCode,
+                    modifiers: $settings.captureFieldShortcutModifiers
+                )
             }
 
             Section {
@@ -357,6 +364,7 @@ struct ShortcutSettingsTab: View {
         .onChange(of: settings.historyShortcutEnabled) { _, _ in AppDelegate.reloadHotKeys() }
         .onChange(of: settings.snippetsShortcutEnabled) { _, _ in AppDelegate.reloadHotKeys() }
         .onChange(of: settings.quickSnippetShortcutEnabled) { _, _ in AppDelegate.reloadHotKeys() }
+        .onChange(of: settings.captureFieldShortcutEnabled) { _, _ in AppDelegate.reloadHotKeys() }
     }
 
     @ViewBuilder
