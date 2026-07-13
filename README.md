@@ -62,7 +62,7 @@ Built as a [Clipy](https://clipy-app.com/) alternative with media support, OCR s
 ### Build from Source
 
 ```bash
-git clone https://github.com/SnsCool/MediaClip.git
+git clone https://github.com/mata-ken/MediaClip.git
 cd MediaClip
 bash build.sh
 open build/MediaClip.app

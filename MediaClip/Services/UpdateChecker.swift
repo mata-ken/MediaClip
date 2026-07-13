@@ -3,8 +3,8 @@ import AppKit
 
 /// Lightweight update check against GitHub Releases (no Sparkle, no telemetry)
 enum UpdateChecker {
-    static let repoPage = "https://github.com/SnsCool/MediaClip"
-    private static let latestReleaseAPI = "https://api.github.com/repos/SnsCool/MediaClip/releases/latest"
+    static let repoPage = "https://github.com/mata-ken/MediaClip"
+    private static let latestReleaseAPI = "https://api.github.com/repos/mata-ken/MediaClip/releases/latest"
 
     static var currentVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
