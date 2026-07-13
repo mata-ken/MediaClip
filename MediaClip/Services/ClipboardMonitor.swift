@@ -6,7 +6,9 @@ import CryptoKit
 final class ClipboardMonitor: ObservableObject {
     private var timer: Timer?
     private var lastChangeCount: Int = 0
-    private var selfChangeMarker = false
+    /// Number of upcoming pasteboard mutations we caused ourselves and should ignore.
+    /// Counter (not a bool) so multiple rapid self-changes (e.g. Cmd+C capture then restore) are each skipped.
+    private var selfChangeCount = 0
 
     static let sourceMarkerType = NSPasteboard.PasteboardType("com.mediaclip.source")
 
@@ -43,11 +45,11 @@ final class ClipboardMonitor: ObservableObject {
     }
 
     func markSelfChange() {
-        selfChangeMarker = true
+        selfChangeCount += 1
     }
 
     func unmarkSelfChange() {
-        selfChangeMarker = false
+        if selfChangeCount > 0 { selfChangeCount -= 1 }
     }
 
     /// Add image data to history directly (e.g. from the screenshot file watcher)
@@ -64,8 +66,8 @@ final class ClipboardMonitor: ObservableObject {
         guard currentCount != lastChangeCount else { return }
         lastChangeCount = currentCount
 
-        if selfChangeMarker {
-            selfChangeMarker = false
+        if selfChangeCount > 0 {
+            selfChangeCount -= 1
             return
         }
 

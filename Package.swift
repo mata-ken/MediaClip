@@ -11,6 +11,7 @@ let package = Package(
             exclude: ["App/Info.plist", "Resources/MediaClip.entitlements"],
             resources: [
                 .process("Resources/Assets.xcassets"),
+                .copy("Resources/AppIcon.icns"),
             ]
         ),
     ]

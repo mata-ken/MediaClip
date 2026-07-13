@@ -38,6 +38,8 @@ cat > "$APP_DIR/Info.plist" << PLIST
     <string>APPL</string>
     <key>CFBundleExecutable</key>
     <string>MediaClip</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
@@ -50,6 +52,9 @@ PLIST
 
 # Copy entitlements
 cp MediaClip/Resources/MediaClip.entitlements "$APP_DIR/Resources/"
+
+# Copy app icon
+cp MediaClip/Resources/AppIcon.icns "$APP_DIR/Resources/AppIcon.icns"
 
 # Ad-hoc code sign with entitlements
 echo "[2.5/4] Signing app bundle..."

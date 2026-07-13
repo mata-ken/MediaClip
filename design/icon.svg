@@ -1,0 +1,69 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background squircle gradient: blue -> indigo -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B8DEF"/>
+      <stop offset="0.55" stop-color="#5A6FF0"/>
+      <stop offset="1" stop-color="#7A4FE0"/>
+    </linearGradient>
+    <!-- Top sheen -->
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Photo thumbnail gradient (teal sky) -->
+    <linearGradient id="photo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3AD1C9"/>
+      <stop offset="1" stop-color="#2C9CE6"/>
+    </linearGradient>
+    <!-- Board subtle top-to-bottom -->
+    <linearGradient id="board" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F8"/>
+    </linearGradient>
+    <linearGradient id="clip" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C3CAD8"/>
+      <stop offset="1" stop-color="#A7B0C4"/>
+    </linearGradient>
+    <!-- Soft shadow -->
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#1B2A66" flood-opacity="0.28"/>
+    </filter>
+    <filter id="photoShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#0C2E52" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <!-- Background squircle (macOS icon grid: 824 within 1024, r=185) -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#sheen)"/>
+
+  <!-- Clipboard group -->
+  <g filter="url(#softShadow)">
+    <!-- Board -->
+    <rect x="299" y="300" width="426" height="516" rx="52" fill="url(#board)"/>
+  </g>
+
+  <!-- Clip at top -->
+  <g filter="url(#photoShadow)">
+    <rect x="438" y="256" width="148" height="86" rx="26" fill="url(#clip)"/>
+    <rect x="474" y="272" width="76" height="30" rx="15" fill="#EEF1F7"/>
+  </g>
+
+  <!-- Photo thumbnail (media) -->
+  <g filter="url(#photoShadow)">
+    <rect x="349" y="360" width="326" height="212" rx="30" fill="url(#photo)"/>
+    <!-- sun -->
+    <circle cx="600" cy="418" r="30" fill="#FFE08A"/>
+    <!-- mountains -->
+    <path d="M349 560 L349 542 L432 452 L505 536 L560 486 L640 560 Z" fill="#FFFFFF" fill-opacity="0.92"/>
+    <path d="M470 560 L560 470 L675 560 L675 542 L675 560 Z" fill="#E8F6FF" fill-opacity="0.85"/>
+    <!-- clip rounded mask edge -->
+    <rect x="349" y="360" width="326" height="212" rx="30" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="3"/>
+  </g>
+
+  <!-- Text lines (clipped text entries) -->
+  <rect x="349" y="612" width="326" height="34" rx="17" fill="#D3DAE8"/>
+  <rect x="349" y="666" width="238" height="34" rx="17" fill="#E0E6F1"/>
+  <rect x="349" y="720" width="290" height="34" rx="17" fill="#E0E6F1"/>
+</svg>
