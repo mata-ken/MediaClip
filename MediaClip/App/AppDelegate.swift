@@ -14,6 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Text awaiting snippet registration via the folder-picker popup
     private var pendingSnippetText: String?
 
+    /// Slightly enlarged menu font (macOS default menu font is ~14pt) — makes the popup a touch bigger.
+    private static let menuFont = NSFont.systemFont(ofSize: 15)
+
     enum MenuKind {
         case full
         case historyOnly
@@ -172,6 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func buildMenu(into menu: NSMenu, kind: MenuKind) {
         let settings = UserSettings.shared
+        menu.font = Self.menuFont
         let headerAttrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
         ]
@@ -325,6 +329,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
 
                 let submenu = NSMenu()
+                submenu.font = Self.menuFont
                 let snippets = StorageManager.shared.snippetsForFolder(folder.id).filter { !$0.content.isEmpty }
                 if snippets.isEmpty {
                     let emptyItem = NSMenuItem(title: "(空)", action: nil, keyEquivalent: "")
@@ -379,7 +384,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
 
             let submenu = NSMenu()
-            submenu.minimumWidth = 250
+            submenu.font = Self.menuFont
+            submenu.minimumWidth = 300
             for i in pageStart..<pageEnd {
                 let clipItem = items[i]
                 let menuItem = createHistoryMenuItem(
@@ -431,7 +437,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
 
             let prefix = settings.showNumbering ? "\(index + 1). " : ""
-            let title = prefix + truncateToPixelWidth(displayText, maxWidth: 220)
+            let title = prefix + truncateToPixelWidth(displayText, maxWidth: 260)
 
             menuItem.title = title
 
@@ -479,7 +485,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .pdf:
             let name = clipItem.textContent ?? "PDF"
             let prefix = settings.showNumbering ? "\(index + 1). " : ""
-            menuItem.title = prefix + "(PDF) " + truncateToPixelWidth(name, maxWidth: 200)
+            menuItem.title = prefix + "(PDF) " + truncateToPixelWidth(name, maxWidth: 240)
             if settings.showIconInMenu {
                 menuItem.image = NSImage(systemSymbolName: "doc.richtext", accessibilityDescription: nil)
             }
@@ -524,7 +530,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fallbackIcon: String,
         settings: UserSettings
     ) -> NSAttributedString {
-        let font = NSFont.menuFont(ofSize: 0)
+        let font = Self.menuFont
         let result = NSMutableAttributedString(string: label + "  ", attributes: [.font: font])
 
         if settings.showImagePreview,
@@ -566,7 +572,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func truncateToPixelWidth(_ text: String, maxWidth: CGFloat) -> String {
-        let font = NSFont.menuFont(ofSize: 0)
+        let font = Self.menuFont
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         let fullWidth = (text as NSString).size(withAttributes: attrs).width
         guard fullWidth > maxWidth else { return text }
@@ -738,6 +744,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pendingSnippetText = text
 
         let menu = NSMenu()
+        menu.font = Self.menuFont
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let preview = String((trimmed.components(separatedBy: .newlines).first ?? trimmed).prefix(24))
         let headerTitle: String
@@ -825,6 +832,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func popupFolderMenu(folderID: UUID) {
         guard let folder = StorageManager.shared.folders.first(where: { $0.id == folderID }) else { return }
         let menu = NSMenu()
+        menu.font = Self.menuFont
         let header = NSMenuItem(title: folder.name, action: nil, keyEquivalent: "")
         header.attributedTitle = NSAttributedString(
             string: folder.name,
